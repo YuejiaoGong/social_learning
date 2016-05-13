@@ -2,7 +2,7 @@
 /* This is a simple implementation of the Social Learning Algorithm (SLA).     */
 /* The codes are written in C.                                                 */
 /* For any questions, please contact Dr. YJ Gong (gongyuejiaoATgmail.com).         */
-/* SLA_1.1,Edited on Feb 25th, 2016.                                           */
+/* SLA_1.1,Edited on May 8th, 2016.                                           */
 /*******************************************************************************/
 
 /* add your header files here */
@@ -14,16 +14,17 @@
 
 /* Change any of these parameters to match your needs */
 
-#define POPSIZE 30       /* population size */	
-#define FES 300000       /* max. number of function evaluations */
-#define TIMES 30         /* number of runs */
-#define DIMS 30          /* max. number of problem variables */
+#define POPSIZE 30				/* population size */	
+#define FES 300000			    /* max. number of function evaluations */
+#define TIMES 30                /* number of runs */
+#define DIMS 30                 /* max. number of problem variables */
 
-const double p_i = 0.7;  /* probability of imitation */
-const double p_r = 0.2;  /* probability of randomization */
-const int SN = 15;       /* number of model/non-model members, it is set to half of the POPSIZE by default*/
+const double p_i = 0.7;         /* probability of imitation */
+const double p_r = 0.2;         /* probability of randomization */
+const int SN1 = 15;             /* number of model members, it is set to half of the POPSIZE by default*/
+const int SN2 = POPSIZE - SN1;  /* number of non-model members */
 
-struct Individual        /* an individual in the population */
+struct Individual               /* an individual in the population */
 {
 	double x[DIMS];
 	double fit;
@@ -55,7 +56,7 @@ void Process();
 double (*function_name)(double pos[],int dim);
 double randval (double low,double high);
 int    cmp (const void *a , const void *b);
-double t_test (double sample1[], double sample2[], int SIZE);
+double t_test (double sample1[], int SIZE1, double sample2[], int SIZE2);
 
 
 
@@ -109,17 +110,17 @@ void Evaluate()
 void Attention()
 {                       
 	int i, i1, j;
-	double s1[SN], s2[SN];
+	double s1[SN1], s2[SN2];
 
 	qsort(pop, POPSIZE, sizeof(pop[0]),cmp);      /* sort the population from best to worst */
 	for(j = 0; j < DIMS; j++){                    /* copy the sorted population to s1[] and s2[] */
-		for(i = 0; i < SN; i++)
-			s1[i] = pop[i].x[j];
-		i1 = POPSIZE-SN;
-		for(i = 0; i < SN; i++){
-			s2[i] = pop[i1++].x[j];
+		for(i=0; i<SN1; i++)
+			s1[i]=pop[i].x[j];
+		i1=SN1;
+		for(i=0; i<SN2; i++){
+			s2[i]=pop[i1++].x[j];
 		}
-		t_Val[j] = t_test(s1, s2, SN);		      /* perform students' t-test */
+		t_Val[j] = t_test(s1, SN1, s2, SN2);	  /* perform students' t-test */
 	}
 	AT = fabs(t_Val[rand()%DIMS]);                /* calculate the attention threshold AT and -AT */
 	mAT = 0-AT;                                 
@@ -142,7 +143,7 @@ void Reproduction_and_Reinforcement()
 
 	for(i = 0; i < POPSIZE; i++){                           /* update each individual */
 		for(j = 0; j < DIMS; j++){
-			do{	r = rand()%SN; } while(r == i);             /* r is a random model member */
+			do{	r = rand()%SN1; } while(r == i);            /* r is a random model member */
 			do{ r1 = rand()%POPSIZE; } while(r1 == i);	    /* r1 is a random individual selected */
 														    /* from the entire population         */
 			nd = randval(0, 1);
@@ -259,34 +260,30 @@ int cmp (const void *a , const void *b)
 
 /*************************************************************/
 /* Student's t_test: conduct student's t-test to compare the */
-/* values of sample1[] and sample2[] with a same SIZE.       */
+/* values of sample1[] and sample2[] with SIZE1 and SIZE2.   */
 /* return the t-value.                                       */
 /*************************************************************/
 
-double t_test(double sample1[], double sample2[], int SIZE)
+double t_test(double sample1[], int SIZE1, double sample2[], int SIZE2)
 {
 	int i;
 	double t_value;
 	double mean_1 = 0, mean_2 = 0, SS_1 = 0,SS_2 = 0, SS_1_2, S_1_2;
-	int df = SIZE - 1 + SIZE - 1;            /* degree of freedom */
+	int df = SIZE1 - 1 + SIZE2 - 1;            /* degree of freedom */
 
 	/* calculate mean */
-	for(i = 0; i < SIZE; i++){
-		mean_1 += sample1[i];
-		mean_2 += sample2[i];
-	}
-	mean_1 /= SIZE;
-	mean_2 /= SIZE;
+	for(i=0; i<SIZE1; i++)  mean_1+=sample1[i];
+	for(i=0; i<SIZE2; i++)	mean_2+=sample2[i];
+	mean_1/=SIZE1;
+	mean_2/=SIZE2;
 
 	/* calculate SS */
-	for(i = 0; i < SIZE; i++){
-		SS_1 += (sample1[i]-mean_1) * (sample1[i]-mean_1);
-		SS_2 += (sample2[i]-mean_2) * (sample2[i]-mean_2);			
-	}
+	for(i=0; i<SIZE1; i++)	SS_1+=(sample1[i]-mean_1)*(sample1[i]-mean_1);
+	for(i=0; i<SIZE2; i++)	SS_2+=(sample2[i]-mean_2)*(sample2[i]-mean_2);	
 
 	/* calculate S_1_2 */
-	SS_1_2 = ((SS_1+SS_2)/(df)) * (1.0/SIZE+1.0/SIZE);
-	S_1_2 = sqrt(SS_1_2);
+	SS_1_2=((SS_1+SS_2)/(df))*(1.0/SIZE1+1.0/SIZE2);
+	S_1_2=sqrt(SS_1_2);
 
 	/* calculate and return t-value */
 	if(S_1_2 == 0) t_value = 0;
