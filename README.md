@@ -1,4 +1,4 @@
-# Social Learning Optimization (SLO)
+# Social Learning Optimization
 
 SLA_1.1, Last Edited on Feb 25th, 2016. 
 
